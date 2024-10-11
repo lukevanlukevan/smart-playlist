@@ -1,13 +1,13 @@
 import json
 import os
-import random
 from openai import OpenAI
 import subprocess
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from difflib import SequenceMatcher
 import re
-import spotdl
+import plotly.graph_objects as go
+import pandas as pd
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -127,50 +127,154 @@ def download_spotify(playlist):
     else:
         print(f"Command failed with error:\n{stderr}")
 
-def main():
-    try:
-        play_url = input("Enter a song URL: ").split("/")[-1].split("?")[0]
-        song = sp.track(play_url)
-        features = sp.audio_features(play_url)
-
-        with open("track.json", "w") as f:
-            json.dump(song, f, indent=4)
-
-        with open("track_info.json", "w") as f:
-            json.dump(features, f, indent=4)
 
 
-        rec = sp.recommendations(
-            seed_tracks=[play_url],
-            target_danceability=features[0]['danceability'],
-            min_danceability=features[0]['danceability']-0.2,
-            max_danceability=features[0]['danceability']+0.2,
-            target_energy=features[0]['energy'],
-            min_energy=features[0]['energy']-0.2,
-            max_energy=features[0]['energy']+0.2,
-            target_key=features[0]['key'],
-            min_key=features[0]['key'] - 2,
-            max_key=features[0]['key'] + 2,
-            target_loudness=features[0]['loudness'],
-            target_mode=features[0]['mode'],
-            target_speechiness=features[0]['speechiness'],
-            target_acousticness=features[0]['acousticness'],
-            target_instrumentalness=features[0]['instrumentalness'],
-            target_liveness=features[0]['liveness'],
-            target_valence=features[0]['valence'],
-            target_tempo=features[0]['tempo'],
-            min_tempo=features[0]['tempo'] - 30,
-            max_tempo=features[0]['tempo'] + 30,
+def do_plot():
+
+    with open("playlist_info.json", "r") as f:
+        playlist = json.load(f)
+    use = {
+        "danceability": {
+            "range": [0, 1],
+        },
+        "energy": {
+            "range": [0, 1],
+        },
+        "key": {
+            "range": [-1, 11],
+        },
+        "loudness": {
+            "range": [-60, 0],
+        },
+        "mode": {
+            "range": [0, 1],
+        },
+        "speechiness": {
+            "range": [0, 1],
+            "hide": True,
+        },
+        "acousticness": {
+            "range": [0, 1],
+        },
+        "instrumentalness": {
+            "range": [0, 1],
+        },
+        "liveness": {
+            "range": [0, 1],
+        },
+        "valence": {
+            "range": [0, 1],
+        },
+        "tempo": {
+            "range": [40, 200],
+            "hide": False,
+        }
+
+    }
+
+    data = [label for label in playlist[0]['features'].keys() if label in use]
+
+    fig = go.Figure()
+    for i, label in enumerate(playlist):
+        values = [lerp(label['features'][track], use[track]['range'][0], use[track]['range'][1]) for track in data if not use[track].get('hide', False)]
+        data = [track for track in data if not use[track].get('hide', False)]
+
+        df = pd.DataFrame(dict(
+            r=values,
+            theta=data
+        ))
+
+        fig.add_trace(
+            go.Scatterpolar(
+                r=df['r'],
+                theta=df['theta'],
+                # fill="toself",  # No fill
+                fill=None,
+                name=f"{label['name']} ({label['artist']})",
+            )
         )
 
-        newplay = create_playlist(song['name'] + " suggested", "recs")
-        recs = [rec['id'] for rec in rec['tracks']]
-        add_tracks_to_playlist(newplay['id'], recs)
-        print("Playlist created")
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 1]
+            )
+        ),
+        showlegend=True
+    )
 
-    except Exception as e:
-        print("Something went wrong...")
-        print(e)
+    fig.show()
+
+
+def lerp(value, min_val, max_val):
+    return (value - min_val) / (max_val - min_val)
+
+def main():
+    # try:
+    play_url = input("Enter a song URL: ").split("/")[-1].split("?")[0]
+    song = sp.track(play_url)
+    features = sp.audio_features(play_url)
+
+    with open("track.json", "w") as f:
+        json.dump(song, f, indent=4)
+
+    with open("track_info.json", "w") as f:
+        json.dump(features, f, indent=4)
+
+
+    rec = sp.recommendations(
+        seed_tracks=[play_url],
+        target_danceability=features[0]['danceability'],
+        min_danceability=features[0]['danceability']-0.2,
+        max_danceability=features[0]['danceability']+0.2,
+        target_energy=features[0]['energy'],
+        min_energy=features[0]['energy']-0.2,
+        max_energy=features[0]['energy']+0.2,
+        target_key=features[0]['key'],
+        min_key=features[0]['key'] - 2,
+        max_key=features[0]['key'] + 2,
+        target_loudness=features[0]['loudness'],
+        target_mode=features[0]['mode'],
+        target_speechiness=features[0]['speechiness'],
+        target_acousticness=features[0]['acousticness'],
+        target_instrumentalness=features[0]['instrumentalness'],
+        target_liveness=features[0]['liveness'],
+        target_valence=features[0]['valence'],
+        target_tempo=features[0]['tempo'],
+        min_tempo=features[0]['tempo'] - 30,
+        max_tempo=features[0]['tempo'] + 30,
+        limit=40
+    )
+
+    newplay = create_playlist(song['name'] + " suggested", "recs")
+    recs = [rec['id'] for rec in rec['tracks']]
+    add_tracks_to_playlist(newplay['id'], recs)
+    print("Playlist created")
+    playlist = sp.playlist(newplay['id'])
+    # playlist = sp.playlist("https://open.spotify.com/playlist/2XEnnhTMP3qKvPqacPxsCC?si=e12bbbec05cd48dc")
+    tracks_info = []
+    for item in playlist['tracks']['items']:
+        track = item['track']
+        track_info = {
+            'id': track['id'],
+            'name': track['name'],
+            'artist': track['artists'][0]['name']
+        }
+        tracks_info.append(track_info)
+
+    features = sp.audio_features([track['id'] for track in tracks_info])
+    for track, feature in zip(tracks_info, features):
+        track['features'] = feature
+
+    with open("playlist_info.json", "w") as f:
+        json.dump(tracks_info, f, indent=4)
+
+    do_plot()
+
+    # except Exception as e:
+    #     print("Something went wrong...")
+    #     print(e)
 
 if __name__ == "__main__":
     main()
