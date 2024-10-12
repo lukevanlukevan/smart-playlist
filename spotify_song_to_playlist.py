@@ -14,7 +14,7 @@ REDIRECT_URI = 'https://lv-smart-playlist.streamlit.app/'
 # Define Spotify scope (the permissions you're requesting from the user)
 SCOPE = "playlist-modify-public playlist-modify-private playlist-read-private user-library-read user-read-recently-played user-top-read"
 
-def create_playlist(name, description):
+def create_playlist(name="Suggested playlist", description="Playlist created by the app"):
     user_id = sp.current_user()["id"]
     playlist = sp.user_playlist_create(user=user_id, name=name, public=True, description=description, collaborative=True)
     return playlist
@@ -107,7 +107,7 @@ def do_plot():
 def lerp(value, min_val, max_val):
     return (value - min_val) / (max_val - min_val)
 
-def get_rec_from_track(play_url):
+def get_rec_from_track(play_url, limit=20):
     # try:
     play_url = play_url.split("/")[-1].split("?")[0]
     song = sp.track(play_url)
@@ -134,7 +134,7 @@ def get_rec_from_track(play_url):
         target_tempo=features[0]['tempo'],
         min_tempo=features[0]['tempo'] - 30,
         max_tempo=features[0]['tempo'] + 30,
-        limit=40
+        limit=limit
     )
 
 
@@ -189,10 +189,15 @@ if code:
     if 'playlist_created' not in st.session_state:
         st.session_state.playlist_created = False
 
-    url = st.text_input("Enter a song URL", key="play_url")
+    col1, col2 = st.columns(2)
+    with col1:
+        url = st.text_input("Enter a song URL", key="play_url")
+
+    with col2:
+        limit = st.number_input("Number of recommendations", min_value=1, max_value=100, value=20)
 
     if st.button("Get recommendations"):
-        results = get_rec_from_track(url)
+        results = get_rec_from_track(url, limit=limit)
         st.session_state.results = results
         st.session_state.playlist_created = False  # Reset playlist creation state
 
@@ -205,18 +210,27 @@ if code:
             "Key": [music_keys[int(track['features']['key'])] for track in results],
             "Preview": [track['preview_url'] for track in results]
         }
+        tabledata = {
+            "Name": [track['name'] for track in results],
+            "Artist": [track['artist'] for track in results],
+            "BPM": [track['features']['tempo'] for track in results],
+            "Key": [music_keys[int(track['features']['key'])] for track in results],
+        }
+        tdf = pd.DataFrame(tabledata)
         df = pd.DataFrame(data)
         # Display the table with play buttons
-        for index, row in df.iterrows():
-            st.write(f"**{row['Name']}** by {row['Artist']} - BPM: {row['BPM']}, Key: {row['Key']}")
-            if row['Preview']:
-                st.audio(row['Preview'], format='audio/mp3')
-            else:
-                st.write("No preview available")
-
+        st.table(df)
+        with st.expander("Preview recommendations"):
+            for index, row in df.iterrows():
+                st.write(f"**{row['Name']}** by {row['Artist']} - BPM: {row['BPM']}, Key: {row['Key']}")
+                if row['Preview']:
+                    st.audio(row['Preview'], format='audio/mp3')
+                else:
+                    st.write("No preview available")
+        first_name = results[0]['name']
+        input_name = st.text_input("Playlist name", value=f'{first_name} Playlist')
+        input_desc = st.text_input("Playlist description", value="Playlist created by the app")
         if st.button("Create playlist") and not st.session_state.playlist_created:
-            input_name = "Suggested Playlist"
-            input_desc = "Playlist created by the app"
             newplay = create_playlist(input_name, input_desc)
             recs = [track['id'] for track in results]
             add_tracks_to_playlist(newplay['id'], recs)
@@ -224,9 +238,8 @@ if code:
             st.write("Playlist created!")
             st.write(f"Listen to it [here](https://open.spotify.com/playlist/{newplay['id']})")
     else:
-        st.write("Waiting for recommendations...")
+        pass
 
 else:
-    st.write(f"Click [here to authorize]({auth_url}) with Spotify")
-    st.write("Waiting for authentication...")
+    st.link_button("Authorize with Spotify", auth_url)
 
