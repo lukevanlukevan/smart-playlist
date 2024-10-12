@@ -9,7 +9,7 @@ load_dotenv()
 # Spotify API credentials
 CLIENT_ID=os.getenv('S_CLIENT_ID')
 CLIENT_SECRET=os.getenv('S_CLIENT_SECRET')
-REDIRECT_URI = 'http://localhost:8501/'
+REDIRECT_URI = '/https://lv-smart-playlist.streamlit.app/'
 
 # Define Spotify scope (the permissions you're requesting from the user)
 SCOPE = "playlist-modify-public playlist-modify-private playlist-read-private user-library-read user-read-recently-played user-top-read"
