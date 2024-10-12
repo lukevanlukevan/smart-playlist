@@ -1,6 +1,5 @@
 import json
 import os
-from openai import OpenAI
 import subprocess
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
