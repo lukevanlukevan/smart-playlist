@@ -1,6 +1,7 @@
 import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+import plotly.graph_objects as go
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -27,10 +28,7 @@ def get_recommendations(seed_tracks):
     recs = [rec['id'] for rec in recommendations['tracks']]
     return recs
 
-def do_plot():
-
-    with open("playlist_info.json", "r") as f:
-        playlist = json.load(f)
+def do_plot(playlist):
     use = {
         "danceability": {
             "range": [0, 1],
@@ -46,6 +44,7 @@ def do_plot():
         },
         "mode": {
             "range": [0, 1],
+            "hide": True
         },
         "speechiness": {
             "range": [0, 1],
@@ -102,12 +101,12 @@ def do_plot():
         showlegend=True
     )
 
-    fig.show()
+    return fig
 
 def lerp(value, min_val, max_val):
     return (value - min_val) / (max_val - min_val)
 
-def get_rec_from_track(play_url, limit=20):
+def get_rec_from_track(play_url, limit=20, tune=None):
     # try:
     play_url = play_url.split("/")[-1].split("?")[0]
     song = sp.track(play_url)
@@ -116,24 +115,26 @@ def get_rec_from_track(play_url, limit=20):
     rec = sp.recommendations(
         seed_tracks=[play_url],
         target_danceability=features[0]['danceability'],
-        min_danceability=features[0]['danceability']-0.2,
-        max_danceability=features[0]['danceability']+0.2,
+        min_danceability=features[0]['danceability'] - tune['danceability'],
+        max_danceability=features[0]['danceability'] + tune['danceability'],
         target_energy=features[0]['energy'],
-        min_energy=features[0]['energy']-0.2,
-        max_energy=features[0]['energy']+0.2,
+        min_energy=features[0]['energy'] - tune['energy'],
+        max_energy=features[0]['energy'] + tune['energy'],
         target_key=features[0]['key'],
-        min_key=features[0]['key'] - 2,
-        max_key=features[0]['key'] + 2,
-        target_loudness=features[0]['loudness'],
+        min_key=features[0]['key'] - tune['key'],
+        max_key=features[0]['key'] + tune['key'],
+        target_loudness=features[0]['loudness'] ,
         target_mode=features[0]['mode'],
         target_speechiness=features[0]['speechiness'],
         target_acousticness=features[0]['acousticness'],
         target_instrumentalness=features[0]['instrumentalness'],
         target_liveness=features[0]['liveness'],
         target_valence=features[0]['valence'],
+        min_valence=features[0]['valence'] - tune['valence'],
+        max_valence=features[0]['valence'] + tune['valence'],
         target_tempo=features[0]['tempo'],
-        min_tempo=features[0]['tempo'] - 30,
-        max_tempo=features[0]['tempo'] + 30,
+        min_tempo=features[0]['tempo'] - tune['tempo'],
+        max_tempo=features[0]['tempo'] + tune['tempo'],
         limit=limit
     )
 
@@ -147,6 +148,7 @@ def get_rec_from_track(play_url, limit=20):
     for item in rec['tracks']:
         track = item
         track_info = {
+            'image': track['album']['images'][0]['url'],
             'id': track['id'],
             'name': track['name'],
             'artist': track['artists'][0]['name'],
@@ -161,7 +163,6 @@ def get_rec_from_track(play_url, limit=20):
 
     return tracks_info
 
-    # do_plot()
 
 # Initialize Spotify OAuth object
 sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
@@ -172,6 +173,7 @@ sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
 # Display the Spotify login button
 auth_url = sp_oauth.get_authorize_url()
 
+st.set_page_config(page_title="Spotify Song to Playlist", layout="wide")
 st.title("Spotify Song to Playlist")
 
 
@@ -179,6 +181,8 @@ st.title("Spotify Song to Playlist")
 code = st.query_params.get("code")
 
 if code:
+    st.subheader("Recommendations from a song")
+
     # Get the access token
     token_info = sp_oauth.get_access_token(code)
     sp = spotipy.Spotify(auth=token_info['access_token'])
@@ -196,14 +200,32 @@ if code:
     with col2:
         limit = st.number_input("Number of recommendations", min_value=1, max_value=100, value=20)
 
+    with st.expander("Advanced options:"):
+        st.info("Tune the recommendation parameters to control variation in tracks.")
+        danceability = st.slider("Danceability variation", 0.0, 1.0, 0.2)
+        energy = st.slider("Energy variation", 0.0, 1.0, 0.15)
+        key = st.slider("Key variation", 0, 11, 2)
+        valence = st.slider("Valence variation", 0.0, 1.0, 0.2)
+        tempo = st.slider("Tempo variation _(BPM)_", 0, 100, 20)
+
+    tune = {
+        "danceability": danceability,
+        "energy": energy,
+        "key": key,
+        "valence": valence,
+        "tempo": tempo
+    }
+
     if st.button("Get recommendations"):
-        results = get_rec_from_track(url, limit=limit)
+        results = get_rec_from_track(url, limit=limit, tune=tune)
         st.session_state.results = results
         st.session_state.playlist_created = False  # Reset playlist creation state
 
     if st.session_state.results:
         results = st.session_state.results
+        st.plotly_chart(do_plot(results))
         data = {
+            "Image": [track['image'] for track in results],
             "Name": [track['name'] for track in results],
             "Artist": [track['artist'] for track in results],
             "BPM": [track['features']['tempo'] for track in results],
@@ -216,17 +238,26 @@ if code:
             "BPM": [track['features']['tempo'] for track in results],
             "Key": [music_keys[int(track['features']['key'])] for track in results],
         }
-        tdf = pd.DataFrame(tabledata)
         df = pd.DataFrame(data)
+        tdf = pd.DataFrame(tabledata)
         # Display the table with play buttons
-        st.table(df)
+        # st.table(df)
+        st.dataframe(tdf.set_index(tdf.columns[0]), width=1000000)
         with st.expander("Preview recommendations"):
             for index, row in df.iterrows():
-                st.write(f"**{row['Name']}** by {row['Artist']} - BPM: {row['BPM']}, Key: {row['Key']}")
+                prevcol1, prevcol2 = st.columns([1, 8])
+                with prevcol1:
+                    st.image(row['Image'])
+                with prevcol2:
+                    st.write(f"**{row['Name']}** by {row['Artist']}")
+                    st.write(f"BPM: {row['BPM']}")
+                    st.write(f"Key: {row['Key']}")
                 if row['Preview']:
                     st.audio(row['Preview'], format='audio/mp3')
                 else:
                     st.write("No preview available")
+
+        st.subheader("Playlist creation")
         first_name = results[0]['name']
         input_name = st.text_input("Playlist name", value=f'{first_name} Playlist')
         input_desc = st.text_input("Playlist description", value="Playlist created by the app")
@@ -236,7 +267,7 @@ if code:
             add_tracks_to_playlist(newplay['id'], recs)
             st.session_state.playlist_created = True  # Update playlist creation state
             st.write("Playlist created!")
-            st.write(f"Listen to it [here](https://open.spotify.com/playlist/{newplay['id']})")
+            st.link_button("Open playlist", f"https://open.spotify.com/playlist/{newplay['id']}")
     else:
         pass
 
