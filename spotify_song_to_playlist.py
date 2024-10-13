@@ -98,7 +98,7 @@ def do_plot(playlist):
                 range=[0, 1]
             )
         ),
-        showlegend=True
+        showlegend=False
     )
 
     return fig
@@ -247,20 +247,25 @@ if code:
             for index, row in df.iterrows():
                 prevcol1, prevcol2 = st.columns([1, 8])
                 with prevcol1:
-                    st.image(row['Image'])
+                    st.image(row['Image'], width=100)
                 with prevcol2:
                     st.write(f"**{row['Name']}** by {row['Artist']}")
                     st.write(f"BPM: {row['BPM']}")
                     st.write(f"Key: {row['Key']}")
-                if row['Preview']:
-                    st.audio(row['Preview'], format='audio/mp3')
-                else:
-                    st.write("No preview available")
+
+                playcol1, playcol2 = st.columns([1, 5], vertical_alignment="center")
+                with playcol1:
+                    st.link_button("Like on Spotify", f"https://open.spotify.com/track/{results[index]['id']}", use_container_width=True)
+                with playcol2:
+                    if row['Preview']:
+                        st.audio(row['Preview'], format='audio/mp3')
+                    else:
+                        st.write("No preview available")
 
         st.subheader("Playlist creation")
         first_name = results[0]['name']
-        input_name = st.text_input("Playlist name", value=f'{first_name} Playlist')
-        input_desc = st.text_input("Playlist description", value="Playlist created by the app")
+        input_name = st.text_input("Playlist name", value=f'{first_name} - Playlist')
+        input_desc = st.text_input("Playlist description", value="Playlist created by the LV Smart Playlist")
         if st.button("Create playlist") and not st.session_state.playlist_created:
             newplay = create_playlist(input_name, input_desc)
             recs = [track['id'] for track in results]
