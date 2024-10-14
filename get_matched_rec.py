@@ -10,9 +10,6 @@ import pandas as pd
 
 from dotenv import load_dotenv
 load_dotenv()
-
-OPENAI_KEY = os.getenv('OPENAI_KEY')
-
 client = OpenAI(
     # This is the default and can be omitted
     api_key=OPENAI_KEY
