@@ -2,9 +2,14 @@ import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import plotly.graph_objects as go
+import plotly.io as pio
 import pandas as pd
 import os
 from dotenv import load_dotenv
+import base64
+from io import BytesIO
+from PIL import Image
+import requests
 load_dotenv()
 
 # Spotify API credentials
@@ -13,7 +18,14 @@ CLIENT_SECRET = os.getenv('S_CLIENT_SECRET')
 REDIRECT_URI = 'https://smart-playlist.streamlit.app/'
 
 # Define Spotify scope (the permissions you're requesting from the user)
-SCOPE = "playlist-modify-public playlist-modify-private playlist-read-private user-library-read user-read-recently-played user-top-read"
+SCOPE = "ugc-image-upload playlist-modify-public playlist-modify-private playlist-read-private user-library-read user-read-recently-played user-top-read"
+
+
+def change_playlist_image(playlist_id, fig):
+    img_bytes = pio.to_image(fig, format='jpeg')
+    img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+    sp.playlist_upload_cover_image(playlist_id, img_base64)
+    return img_bytes
 
 
 def create_playlist(name="Suggested playlist", description="Playlist created by the app"):
@@ -116,7 +128,8 @@ def get_rec_from_track(play_url, limit=20, tune=None):
     # try:
     play_url = play_url.split("/")[-1].split("?")[0]
     song = sp.track(play_url)
-    features = sp.audio_features(play_url)
+    features = sp.audio_features(play_url) # type: list
+    tune = tune # type: dict
 
     rec = sp.recommendations(
         seed_tracks=[play_url],
@@ -190,7 +203,7 @@ st.title("Spotify Song to Playlist")
 code = st.query_params.get("code")
 if 'code' not in st.session_state:
     st.session_state['code'] = code
-    st.query_params.clear()
+    # st.query_params.clear()
 
 usecode = st.session_state['code']
 
@@ -217,10 +230,6 @@ if usecode:
 
     spotify_recommendation_parameters = [
         {
-            "name": "Acousticness",
-            "description": "A measure from 0.0 to 1.0 of whether the track is acoustic. A higher value represents a higher likelihood that the track is acoustic.",
-        },
-        {
             "name": "Danceability",
             "description": "A measure from 0.0 to 1.0 of how suitable a track is for dancing based on a combination of musical elements including tempo, rhythm stability, beat strength, and overall regularity. A higher value indicates a track that is more danceable.",
             "range": [0.0, 1.0, 0.2]
@@ -231,13 +240,27 @@ if usecode:
             "range": [0.0, 1.0, 0.15]
         },
         {
-            "name": "Instrumentalness",
-            "description": "Predicts whether a track contains no vocals. 'Ooh' and 'aah' sounds are treated as instrumental in this context. Rap or spoken word tracks are clearly 'vocal'. The closer the instrumentalness value is to 1.0, the greater likelihood the track contains no vocal content.",
-        },
-        {
             "name": "Key",
             "description": "The key the track is in. Integers map to pitches using standard Pitch Class notation. E.g. 0 = C, 1 = C♯/D♭, 2 = D, and so on.",
             "range": [0, 11, 2]
+        },
+        {
+            "name": "Tempo",
+            "description": "The overall estimated tempo of a track in beats per minute (BPM). In musical terminology, tempo is the speed or pace of a given piece and derives directly from the average beat duration.",
+            "range": [0, 100, 20]
+        },
+        {
+            "name": "Valence",
+            "description": "A measure from 0.0 to 1.0 describing the musical positiveness conveyed by a track. Tracks with high valence sound more positive (e.g. happy, cheerful, euphoric), while tracks with low valence sound more negative (e.g. sad, depressed, angry).",
+            "range": [0.0, 1.0, 0.2]
+        },
+        {
+            "name": "Acousticness",
+            "description": "A measure from 0.0 to 1.0 of whether the track is acoustic. A higher value represents a higher likelihood that the track is acoustic.",
+        },
+        {
+            "name": "Instrumentalness",
+            "description": "Predicts whether a track contains no vocals. 'Ooh' and 'aah' sounds are treated as instrumental in this context. Rap or spoken word tracks are clearly 'vocal'. The closer the instrumentalness value is to 1.0, the greater likelihood the track contains no vocal content.",
         },
         {
             "name": "Liveness",
@@ -258,22 +281,8 @@ if usecode:
         {
             "name": "Speechiness",
             "description": "Speechiness detects the presence of spoken words in a track. The more exclusively speech-like the recording (e.g. talk show, audio book, poetry), the closer to 1.0 the attribute value. Values above 0.66 describe tracks that are probably made entirely of spoken words. Values between 0.33 and 0.66 describe tracks that may contain both music and speech, either in sections or layered, including such cases as rap music. Values below 0.33 most likely represent music and other non-speech-like tracks."
-        },
-        {
-            "name": "Tempo",
-            "description": "The overall estimated tempo of a track in beats per minute (BPM). In musical terminology, tempo is the speed or pace of a given piece and derives directly from the average beat duration.",
-            "range": [0, 100, 20]
-        },
-        {
-            "name": "Time Signature",
-            "description": "An estimated overall time signature of a track. The time signature (meter) is a notational convention to specify how many beats are in each bar (or measure)."
-        },
-        {
-            "name": "Valence",
-            "description": "A measure from 0.0 to 1.0 describing the musical positiveness conveyed by a track. Tracks with high valence sound more positive (e.g. happy, cheerful, euphoric), while tracks with low valence sound more negative (e.g. sad, depressed, angry).",
-            "range": [0.0, 1.0, 0.2]
         }
-        ]
+    ]
 
     with st.expander("Advanced options:"):
         st.info("These are variations from the original track's features. Sliders completely left will match the original track's features.", icon="ℹ️")
@@ -296,7 +305,9 @@ if usecode:
 
     if st.session_state.results:
         results = st.session_state.results
-        st.plotly_chart(do_plot(results))
+        fig1 = do_plot(results)
+        st.plotly_chart(fig1)
+
         data = {
             "Image": [track['image'] for track in results],
             "Name": [track['name'] for track in results],
@@ -315,6 +326,7 @@ if usecode:
         tdf = pd.DataFrame(tabledata)
 
         st.dataframe(tdf.set_index(tdf.columns[0]), width=1000000)
+
         with st.expander("Preview recommendations"):
             for index, row in df.iterrows():
                 prevcol1, prevcol2 = st.columns([1, 8])
@@ -340,14 +352,13 @@ if usecode:
         input_desc = st.text_input("Playlist description", value="Playlist created by the LV Smart Playlist")
         if st.button("Create playlist") and not st.session_state.playlist_created:
             newplay = create_playlist(input_name, input_desc)
+            change_playlist_image(newplay['id'], fig1)
             recs = [track['id'] for track in results]
             add_tracks_to_playlist(newplay['id'], recs)
             st.session_state.playlist_created = True  # Update playlist creation state
-            st.write("Playlist created!")
-            st.link_button("Open playlist", f"https://open.spotify.com/playlist/{newplay['id']}")
+            st.link_button("Open playlist on Spotify", f"https://open.spotify.com/playlist/{newplay['id']}")
     else:
         pass
 
 else:
     st.link_button("Authorize with Spotify", auth_url)
-
