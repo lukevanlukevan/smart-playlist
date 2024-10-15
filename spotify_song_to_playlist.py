@@ -179,43 +179,6 @@ def get_rec_from_track(play_url, limit=20, tune=None):
         **rec_obj
     )
 
-    # rec = sp.recommendations(
-    #     seed_tracks=[play_url],
-    #     target_danceability=features[0]['danceability'],
-    #     min_danceability=features[0]['danceability'] - tune['danceability'],
-    #     max_danceability=features[0]['danceability'] + tune['danceability'],
-    #     target_energy=features[0]['energy'],
-    #     min_energy=features[0]['energy'] - tune['energy'],
-    #     max_energy=features[0]['energy'] + tune['energy'],
-    #     target_key=features[0]['key'],
-    #     min_key=features[0]['key'] - tune['key'],
-    #     max_key=features[0]['key'] + tune['key'],
-    #     target_loudness=features[0]['loudness'],
-    #     target_mode=features[0]['mode'],
-    #     target_speechiness=features[0]['speechiness'],
-    #     target_acousticness=features[0]['acousticness'],
-    #     # min_acousticness=features[0]['acousticness'] - tune['acousticness'],
-    #     # max_acousticness=features[0]['acousticness'] + tune['acousticness'],
-    #     target_instrumentalness=features[0]['instrumentalness'],
-    #     # min_instrumentalness=features[0]['instrumentalness'] - tune['instrumentalness'],
-    #     # max_instrumentalness=features[0]['instrumentalness'] + tune['instrumentalness'],
-    #     target_liveness=features[0]['liveness'],
-    #     # min_liveness=features[0]['liveness'] - tune['liveness'],
-    #     # max_liveness=features[0]['liveness'] + tune['liveness'],
-    #     target_valence=features[0]['valence'],
-    #     min_valence=features[0]['valence'] - tune['valence'],
-    #     max_valence=features[0]['valence'] + tune['valence'],
-    #     target_tempo=features[0]['tempo'],
-    #     min_tempo=features[0]['tempo'] - tune['tempo'],
-    #     max_tempo=features[0]['tempo'] + tune['tempo'],
-    #     limit=limit
-    # )
-
-    # newplay = create_playlist(song['name'] + " suggested", "recs")
-    recs = [rec['id'] for rec in rec['tracks']]
-
-    # add_tracks_to_playlist(newplay['id'], recs)
-    # playlist = sp.playlist(newplay['id'])
     tracks_info = []
     for item in rec['tracks']:
         track = item
@@ -431,9 +394,6 @@ if usecode:
         input_desc = st.text_input("Playlist description", value="Playlist created by the LV Smart Playlist")
         if st.button("Create playlist") and not st.session_state.playlist_created:
             newplay = create_playlist(input_name, input_desc)
-            newplay = {
-                "id": "foo"
-            }
             image = change_playlist_image(newplay['id'], fig1)
             recs = [track['id'] for track in results]
             add_tracks_to_playlist(newplay['id'], recs)
