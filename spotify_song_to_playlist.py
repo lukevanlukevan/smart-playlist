@@ -240,6 +240,17 @@ auth_url = sp_oauth.get_authorize_url()
 st.set_page_config(page_title="Spotify Song to Playlist", layout="wide")
 st.title("Spotify Song to Playlist")
 
+with st.expander("How to use:"):
+    st.write("1. Click the 'Authorize with Spotify' button below.")
+    st.write("2. Log in to your Spotify account.")
+    st.write("3. Copy the URL of a song you like on Spotify.")
+    st.write("4. Paste the URL in the 'Enter a song URL' field.")
+    st.write("5. Choose the number of recommendations you want.")
+    st.write("6. Adjust the sliders to fine-tune the recommendations.")
+    st.write("7. Click the 'Get recommendations' button.")
+    st.write("8. Listen to the recommendations and create a playlist with them.")
+
+
 # Capture the token after redirection
 code = st.query_params.get("code")
 if 'code' not in st.session_state:
@@ -374,6 +385,7 @@ if usecode:
         results = get_rec_from_track(url, limit=limit, tune=tune)
         st.session_state.results = results
         st.session_state.playlist_created = False  # Reset playlist creation state
+
 
     if st.session_state.results:
         results = st.session_state.results
