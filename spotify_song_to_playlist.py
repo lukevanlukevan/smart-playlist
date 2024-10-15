@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 import base64
 from io import BytesIO
+import io
 from PIL import Image
 import requests
 load_dotenv()
@@ -23,8 +24,19 @@ SCOPE = "ugc-image-upload playlist-modify-public playlist-modify-private playlis
 
 def change_playlist_image(playlist_id, fig):
     img_bytes = pio.to_image(fig, format='jpeg')
-    img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+
+    image = Image.open(io.BytesIO(img_bytes))
+
+    crop_box = (190-20, 100-20, 510+20, 420+20)
+    cropped_image = image.crop(crop_box)
+
+    cropped_image_bytes = io.BytesIO()
+    cropped_image.save(cropped_image_bytes, format='JPEG')
+    cropped_image_bytes = cropped_image_bytes.getvalue()
+
+    img_base64 = base64.b64encode(cropped_image_bytes).decode('utf-8')
     sp.playlist_upload_cover_image(playlist_id, img_base64)
+
     return img_bytes
 
 
@@ -111,9 +123,22 @@ def do_plot(playlist):
     fig.update_layout(
         polar=dict(
             radialaxis=dict(
-                visible=True,
-                range=[0, 1]
-            )
+                # visible=False,
+                range=[0, 1],
+                ticks="",
+                tickwidth=0,
+                ticklen=0,
+                showticklabels=False  # Hide radial axis labels
+
+            ),
+            angularaxis=dict(
+                ticklen=0,
+                # linewidth=2,
+                # visible=False,
+
+                # showline=True,
+                # showticklabels=False  # Hide angular axis labels
+            ),
         ),
         showlegend=False
     )
@@ -141,11 +166,16 @@ def do_plot(playlist):
     fig2.update_layout(
         polar=dict(
             radialaxis=dict(
-                visible=True,
-                range=[0, 1]
-            )
+                visible=False,
+                range=[0, 1],
+            ),
+            angularaxis=dict(
+                ticklen=0,
+                showline=True,
+                showticklabels=False  # Hide angular axis labels
+            ),
         ),
-        showlegend=False,
+        showlegend=False
     )
 
     return fig, fig2
@@ -348,6 +378,7 @@ if usecode:
     if st.session_state.results:
         results = st.session_state.results
         fig1, fig2 = do_plot(results)
+        # st.plotly_chart(fig2)
         st.plotly_chart(fig1)
 
         data = {
@@ -394,7 +425,7 @@ if usecode:
         input_desc = st.text_input("Playlist description", value="Playlist created by the LV Smart Playlist")
         if st.button("Create playlist") and not st.session_state.playlist_created:
             newplay = create_playlist(input_name, input_desc)
-            image = change_playlist_image(newplay['id'], fig1)
+            image = change_playlist_image(newplay['id'], fig2)
             recs = [track['id'] for track in results]
             add_tracks_to_playlist(newplay['id'], recs)
             st.session_state.playlist_created = True  # Update playlist creation state
