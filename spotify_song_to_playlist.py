@@ -11,6 +11,7 @@ from io import BytesIO
 import io
 from PIL import Image
 import requests
+import random
 load_dotenv()
 
 # Spotify API credentials
@@ -23,12 +24,30 @@ SCOPE = "ugc-image-upload playlist-modify-public playlist-modify-private playlis
 
 
 def change_playlist_image(playlist_id, fig):
-    img_bytes = pio.to_image(fig, format='jpeg')
+    img_bytes = pio.to_image(fig, format='png')
 
     image = Image.open(io.BytesIO(img_bytes))
 
     crop_box = (190-20, 100-20, 510+20, 420+20)
     cropped_image = image.crop(crop_box)
+
+# Convert the image to RGBA mode
+    cropped_image = cropped_image.convert("RGB")
+    data = cropped_image.getdata()
+
+    rand_rgb = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+
+    new_data = []
+    for item in data:
+        # Change all black (also shades of black)
+        # to a random color
+        if item[0] < 200 and item[1] < 200 and item[2] < 200:
+            new_data.append(rand_rgb)
+        else:
+            new_data.append(item)
+
+    cropped_image.putdata(new_data)
+
 
     cropped_image_bytes = io.BytesIO()
     cropped_image.save(cropped_image_bytes, format='JPEG')
@@ -275,7 +294,7 @@ if usecode:
 
     col1, col2 = st.columns(2)
     with col1:
-        url = st.text_input("Enter a song URL", key="play_url")
+        url = st.text_input("Enter a song URL", key="play_url", value="https://open.spotify.com/track/4cSMfAD4NsTmoHLLthMoug?si=33800fc3e040410c")
 
     with col2:
         limit = st.number_input("Number of recommendations", min_value=1, max_value=100, value=20)
