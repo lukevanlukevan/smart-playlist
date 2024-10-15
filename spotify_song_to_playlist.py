@@ -24,7 +24,7 @@ SCOPE = "ugc-image-upload playlist-modify-public playlist-modify-private playlis
 def change_playlist_image(playlist_id, fig):
     img_bytes = pio.to_image(fig, format='jpeg')
     img_base64 = base64.b64encode(img_bytes).decode('utf-8')
-    # sp.playlist_upload_cover_image(playlist_id, img_base64)
+    sp.playlist_upload_cover_image(playlist_id, img_base64)
     return img_bytes
 
 
@@ -171,6 +171,7 @@ def get_rec_from_track(play_url, limit=20, tune=None):
             rec_obj[f'target_{opt}'] = features[0][opt]
             rec_obj[f'min_{opt}'] = features[0][opt] - tune[opt]
             rec_obj[f'max_{opt}'] = features[0][opt] + tune[opt]
+
 
     rec = sp.recommendations(
         seed_tracks=[play_url],
@@ -429,14 +430,13 @@ if usecode:
         input_name = st.text_input("Playlist name", value=f'{first_name} - Playlist')
         input_desc = st.text_input("Playlist description", value="Playlist created by the LV Smart Playlist")
         if st.button("Create playlist") and not st.session_state.playlist_created:
-            # newplay = create_playlist(input_name, input_desc)
+            newplay = create_playlist(input_name, input_desc)
             newplay = {
                 "id": "foo"
             }
             image = change_playlist_image(newplay['id'], fig1)
-            st.image(image)
             recs = [track['id'] for track in results]
-            # add_tracks_to_playlist(newplay['id'], recs)
+            add_tracks_to_playlist(newplay['id'], recs)
             st.session_state.playlist_created = True  # Update playlist creation state
             st.link_button("Open playlist on Spotify", f"https://open.spotify.com/playlist/{newplay['id']}")
     else:
