@@ -24,7 +24,7 @@ SCOPE = "ugc-image-upload playlist-modify-public playlist-modify-private playlis
 def change_playlist_image(playlist_id, fig):
     img_bytes = pio.to_image(fig, format='jpeg')
     img_base64 = base64.b64encode(img_bytes).decode('utf-8')
-    sp.playlist_upload_cover_image(playlist_id, img_base64)
+    # sp.playlist_upload_cover_image(playlist_id, img_base64)
     return img_bytes
 
 
@@ -87,6 +87,7 @@ def do_plot(playlist):
 
     data = [label for label in playlist[0]['features'].keys() if label in use]
 
+    # Graph for song preview
     fig = go.Figure()
     for i, label in enumerate(playlist):
         values = [lerp(label['features'][track], use[track]['range'][0], use[track]['range'][1]) for track in data if not use[track].get('hide', False)]
@@ -117,7 +118,37 @@ def do_plot(playlist):
         showlegend=False
     )
 
-    return fig
+    # Graph for cover photo
+    fig2 = go.Figure()
+    for i, label in enumerate(playlist):
+        values = [lerp(label['features'][track], use[track]['range'][0], use[track]['range'][1]) for track in data if not use[track].get('hide', False)]
+        data = [track for track in data if not use[track].get('hide', False)]
+
+        df = pd.DataFrame(dict(
+            r=values,
+            theta=data
+        ))
+
+        fig2.add_trace(
+            go.Scatterpolar(
+                r=df['r'],
+                theta=df['theta'],
+                # fill="toself",  # No fill
+                fill=None,
+            )
+        )
+
+    fig2.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 1]
+            )
+        ),
+        showlegend=False,
+    )
+
+    return fig, fig2
 
 
 def lerp(value, min_val, max_val):
@@ -131,37 +162,53 @@ def get_rec_from_track(play_url, limit=20, tune=None):
     features = sp.audio_features(play_url) # type: list
     tune = tune # type: dict
 
+    rec_obj = {}
+
+    for opt in tune:
+        if tune[opt] == 0:
+            rec_obj[f'target_{opt}'] = features[0][opt]
+        else:
+            rec_obj[f'target_{opt}'] = features[0][opt]
+            rec_obj[f'min_{opt}'] = features[0][opt] - tune[opt]
+            rec_obj[f'max_{opt}'] = features[0][opt] + tune[opt]
+
     rec = sp.recommendations(
         seed_tracks=[play_url],
-        target_danceability=features[0]['danceability'],
-        min_danceability=features[0]['danceability'] - tune['danceability'],
-        max_danceability=features[0]['danceability'] + tune['danceability'],
-        target_energy=features[0]['energy'],
-        min_energy=features[0]['energy'] - tune['energy'],
-        max_energy=features[0]['energy'] + tune['energy'],
-        target_key=features[0]['key'],
-        min_key=features[0]['key'] - tune['key'],
-        max_key=features[0]['key'] + tune['key'],
-        target_loudness=features[0]['loudness'],
-        target_mode=features[0]['mode'],
-        target_speechiness=features[0]['speechiness'],
-        target_acousticness=features[0]['acousticness'],
-        # min_acousticness=features[0]['acousticness'] - tune['acousticness'],
-        # max_acousticness=features[0]['acousticness'] + tune['acousticness'],
-        target_instrumentalness=features[0]['instrumentalness'],
-        # min_instrumentalness=features[0]['instrumentalness'] - tune['instrumentalness'],
-        # max_instrumentalness=features[0]['instrumentalness'] + tune['instrumentalness'],
-        target_liveness=features[0]['liveness'],
-        # min_liveness=features[0]['liveness'] - tune['liveness'],
-        # max_liveness=features[0]['liveness'] + tune['liveness'],
-        target_valence=features[0]['valence'],
-        min_valence=features[0]['valence'] - tune['valence'],
-        max_valence=features[0]['valence'] + tune['valence'],
-        target_tempo=features[0]['tempo'],
-        min_tempo=features[0]['tempo'] - tune['tempo'],
-        max_tempo=features[0]['tempo'] + tune['tempo'],
-        limit=limit
+        limit=limit,
+        **rec_obj
     )
+
+    # rec = sp.recommendations(
+    #     seed_tracks=[play_url],
+    #     target_danceability=features[0]['danceability'],
+    #     min_danceability=features[0]['danceability'] - tune['danceability'],
+    #     max_danceability=features[0]['danceability'] + tune['danceability'],
+    #     target_energy=features[0]['energy'],
+    #     min_energy=features[0]['energy'] - tune['energy'],
+    #     max_energy=features[0]['energy'] + tune['energy'],
+    #     target_key=features[0]['key'],
+    #     min_key=features[0]['key'] - tune['key'],
+    #     max_key=features[0]['key'] + tune['key'],
+    #     target_loudness=features[0]['loudness'],
+    #     target_mode=features[0]['mode'],
+    #     target_speechiness=features[0]['speechiness'],
+    #     target_acousticness=features[0]['acousticness'],
+    #     # min_acousticness=features[0]['acousticness'] - tune['acousticness'],
+    #     # max_acousticness=features[0]['acousticness'] + tune['acousticness'],
+    #     target_instrumentalness=features[0]['instrumentalness'],
+    #     # min_instrumentalness=features[0]['instrumentalness'] - tune['instrumentalness'],
+    #     # max_instrumentalness=features[0]['instrumentalness'] + tune['instrumentalness'],
+    #     target_liveness=features[0]['liveness'],
+    #     # min_liveness=features[0]['liveness'] - tune['liveness'],
+    #     # max_liveness=features[0]['liveness'] + tune['liveness'],
+    #     target_valence=features[0]['valence'],
+    #     min_valence=features[0]['valence'] - tune['valence'],
+    #     max_valence=features[0]['valence'] + tune['valence'],
+    #     target_tempo=features[0]['tempo'],
+    #     min_tempo=features[0]['tempo'] - tune['tempo'],
+    #     max_tempo=features[0]['tempo'] + tune['tempo'],
+    #     limit=limit
+    # )
 
     # newplay = create_playlist(song['name'] + " suggested", "recs")
     recs = [rec['id'] for rec in rec['tracks']]
@@ -257,18 +304,23 @@ if usecode:
         {
             "name": "Acousticness",
             "description": "A measure from 0.0 to 1.0 of whether the track is acoustic. A higher value represents a higher likelihood that the track is acoustic.",
+            "enabled": True
         },
         {
             "name": "Instrumentalness",
             "description": "Predicts whether a track contains no vocals. 'Ooh' and 'aah' sounds are treated as instrumental in this context. Rap or spoken word tracks are clearly 'vocal'. The closer the instrumentalness value is to 1.0, the greater likelihood the track contains no vocal content.",
+            "enabled": True
         },
         {
             "name": "Liveness",
             "description": "Detects the presence of an audience in the recording. Higher liveness values represent an increased probability that the track was performed live. A value above 0.8 provides strong likelihood that the track is live.",
+            "enabled": True
         },
         {
             "name": "Loudness",
-            "description": "The overall loudness of a track in decibels (dB). Loudness values are averaged across the entire track and are useful for comparing relative loudness of tracks. Loudness is the quality of a sound that is the primary psychological correlate of physical strength (amplitude)."
+            "description": "The overall loudness of a track in decibels (dB). Loudness values are averaged across the entire track and are useful for comparing relative loudness of tracks. Loudness is the quality of a sound that is the primary psychological correlate of physical strength (amplitude).",
+            "hide": True,
+            "range": [-60, 0, 10]
         },
         {
             "name": "Mode",
@@ -280,7 +332,8 @@ if usecode:
         },
         {
             "name": "Speechiness",
-            "description": "Speechiness detects the presence of spoken words in a track. The more exclusively speech-like the recording (e.g. talk show, audio book, poetry), the closer to 1.0 the attribute value. Values above 0.66 describe tracks that are probably made entirely of spoken words. Values between 0.33 and 0.66 describe tracks that may contain both music and speech, either in sections or layered, including such cases as rap music. Values below 0.33 most likely represent music and other non-speech-like tracks."
+            "description": "Speechiness detects the presence of spoken words in a track. The more exclusively speech-like the recording (e.g. talk show, audio book, poetry), the closer to 1.0 the attribute value. Values above 0.66 describe tracks that are probably made entirely of spoken words. Values between 0.33 and 0.66 describe tracks that may contain both music and speech, either in sections or layered, including such cases as rap music. Values below 0.33 most likely represent music and other non-speech-like tracks.",
+            "enabled": True
         }
     ]
 
@@ -288,8 +341,8 @@ if usecode:
         st.info("These are variations from the original track's features. Sliders completely left will match the original track's features.", icon="ℹ️")
 
         tune = {}
-        for param in spotify_recommendation_parameters:
-            if "range" in param:
+        for index, param in enumerate(spotify_recommendation_parameters):
+            if "range" in param and index < 5 and not param.get("hide", False):
                 tune[param["name"].lower()] = st.slider(
                     f"{param['name']} variation",
                     param["range"][0],
@@ -297,6 +350,31 @@ if usecode:
                     param["range"][2],
                     help=param["description"]
                 )
+        if st.checkbox("Super advanced options:"):
+            st.info("Toggle to enable matching based on each parameter. Drag slider off of 0 to introduce variation in matched values.", icon="ℹ️")
+            for index, param in enumerate(spotify_recommendation_parameters):
+                if index > 4 and not param.get("hide", False):
+                    with st.container(border=True):
+                        on = param.get('enabled', False)
+                        use = st.toggle(f"Match by '{param['name'].lower()}'", key=f"toggle_{param['name']}", value=on)
+                        try:
+                            min_val = param['range'][0] or 0
+                            max_val = param['range'][1] or 1
+                        except:
+                            min_val = 0.0
+                            max_val = 1.0
+                        slider = st.slider(
+                            f"{param['name']} variation",
+                            min_value=min_val,
+                            max_value=max_val,
+                            value=0.0,
+                            disabled=not use,
+                            help=param["description"]
+                        )
+                        if use:
+                            tune[param["name"].lower()] = slider
+
+
 
     if st.button("Get recommendations"):
         results = get_rec_from_track(url, limit=limit, tune=tune)
@@ -305,7 +383,7 @@ if usecode:
 
     if st.session_state.results:
         results = st.session_state.results
-        fig1 = do_plot(results)
+        fig1, fig2 = do_plot(results)
         st.plotly_chart(fig1)
 
         data = {
@@ -351,10 +429,14 @@ if usecode:
         input_name = st.text_input("Playlist name", value=f'{first_name} - Playlist')
         input_desc = st.text_input("Playlist description", value="Playlist created by the LV Smart Playlist")
         if st.button("Create playlist") and not st.session_state.playlist_created:
-            newplay = create_playlist(input_name, input_desc)
-            change_playlist_image(newplay['id'], fig1)
+            # newplay = create_playlist(input_name, input_desc)
+            newplay = {
+                "id": "foo"
+            }
+            image = change_playlist_image(newplay['id'], fig1)
+            st.image(image)
             recs = [track['id'] for track in results]
-            add_tracks_to_playlist(newplay['id'], recs)
+            # add_tracks_to_playlist(newplay['id'], recs)
             st.session_state.playlist_created = True  # Update playlist creation state
             st.link_button("Open playlist on Spotify", f"https://open.spotify.com/playlist/{newplay['id']}")
     else:
