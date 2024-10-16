@@ -117,5 +117,5 @@ if usecode:
                 sp.playlist_upload_cover_image(playlist_id, img_base64)
 
 else:
-    st.markdown("<a href=f'" + auth_url + "'>Login with Spotify</a>", unsafe_allow_html=True)
+    st.markdown("<a href='" + auth_url + "'>Login with Spotify</a>", unsafe_allow_html=True)
     st.link_button("Authorize with Spotify", auth_url)
