@@ -59,9 +59,11 @@ def gen_art(words, blur_radius, background_color):
 CLIENT_ID = os.getenv('S_CLIENT_ID')
 CLIENT_SECRET = os.getenv('S_CLIENT_SECRET')
 REDIRECT_URI = 'https://lv-cover-generator.streamlit.app/'
+# REDIRECT_URI = 'https://smart-playlist.streamlit.app/'
+# REDIRECT_URI = 'https://smart:8501/'
 
 # Define Spotify scope (the permissions you're requesting from the user)
-SCOPE = "ugc-image-upload playlist-modify-public playlist-modify-private playlist-read-private user-library-read user-read-recently-played user-top-read"
+SCOPE = "ugc-image-upload playlist-modify-public playlist-modify-private playlist-read-private user-library-read"
 
 # Initialize Spotify OAuth object
 sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
