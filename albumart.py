@@ -9,6 +9,7 @@ import streamlit as st
 import colorsys
 import random
 import re
+import platform
 
 load_dotenv()
 
@@ -58,7 +59,10 @@ def gen_art(words, blur_radius, background_color):
 # Spotify API credentials
 CLIENT_ID = os.getenv('S_CLIENT_ID')
 CLIENT_SECRET = os.getenv('S_CLIENT_SECRET')
-REDIRECT_URI = 'https://lv-cover-generator.streamlit.app/'
+if not platform.processor() == "":
+    REDIRECT_URI = 'http://localhost:8501/'
+else:
+    REDIRECT_URI = 'https://lv-cover-generator.streamlit.app/'
 # REDIRECT_URI = 'https://smart-playlist.streamlit.app/'
 # REDIRECT_URI = 'https://smart:8501/'
 
@@ -91,23 +95,6 @@ if usecode:
     st.title("Playlist Cover Generator")
 
     link = st.text_input('Playlist link')
-
-
-
-    # with st.expander("Controls", expanded=True):
-    #     blur_radius = st.slider('Blur radius', min_value=0, max_value=10, value=2)
-
-    #     # HSL sliders grouped in 3 columns for background color
-    #     st.subheader("Background Color")
-    #     col1, col2, col3 = st.columns(3)
-    #     with col1:
-    #         hue = st.slider('Hue', min_value=0, max_value=360, value=random.randint(0, 360))
-    #     with col2:
-    #         saturation = st.slider('Saturation', min_value=0, max_value=100, value=random.randint(40, 80))
-    #     with col3:
-    #         value = st.slider('Value', min_value=0, max_value=100, value=random.randint(40, 80))
-
-        # Convert HSL to RGB
     blur_radius = 4
     background_color = hsv_to_rgb(random.randint(0, 360), random.randint(40, 80), random.randint(40, 80))
 
