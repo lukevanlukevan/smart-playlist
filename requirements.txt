@@ -4,5 +4,4 @@ pandas
 python-dotenv
 plotly
 kaleido
-PIL
 pillow
