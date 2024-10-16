@@ -12,6 +12,9 @@ import re
 
 load_dotenv()
 
+st.set_page_config(page_title="Playlist Cover Generator")
+
+
 def lerp(value, min_val, max_val):
     return (value - min_val) / (max_val - min_val)
 
@@ -84,7 +87,6 @@ if usecode:
 
     # Streamlit UI
     st.title("Playlist Cover Generator")
-    st.set_page_config(page_title="Playlist Cover Generator")
 
     link = st.text_input('Playlist link')
 
