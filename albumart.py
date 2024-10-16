@@ -96,7 +96,7 @@ if usecode:
 
     link = st.text_input('Playlist link')
     blur_radius = 4
-    if not st.session_state.background_color:
+    if 'background_color' not in st.session_state:
         background_color = hsv_to_rgb(random.randint(0, 360), random.randint(40, 80), random.randint(40, 80))
     else:
         background_color = st.session_state.background_color
@@ -120,5 +120,6 @@ if usecode:
                 sp.playlist_upload_cover_image(playlist_id, img_base64)
 
 else:
-    st.markdown("<a target='_self' href='" + auth_url + "'>Login with Spotify</a>", unsafe_allow_html=True)
+    st.markdown("<a target='_self' 
+    href='" + auth_url + "'>Login with Spotify</a>", unsafe_allow_html=True)
     #st.link_button("Authorize with Spotify", auth_url)
