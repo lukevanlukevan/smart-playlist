@@ -28,8 +28,8 @@ def gen_art(words, blur_radius, background_color):
     draw = ImageDraw.Draw(image)
 
     text_size = 70  # Fixed text size
-    font_path = "arial.ttf"  # Path to a .ttf font file
-    font = ImageFont.truetype(font_path, text_size)
+    # font_path = "arial.ttf"  # Path to a .ttf font file
+    # font = ImageFont.truetype(font_path, text_size)
 
     # Determine text color based on background luminance
     bg_luminance = colorsys.rgb_to_hsv(*background_color)[2]
@@ -40,9 +40,9 @@ def gen_art(words, blur_radius, background_color):
         shuffled_words = words.split()
         random.shuffle(shuffled_words)
         words = " ".join(shuffled_words)
-        text_bbox = draw.textbbox((0, 0), words, font=font)
+        text_bbox = draw.textbbox((0, 0), words)
         text_height = text_bbox[3] - text_bbox[1]
-        draw.text((0, y_offset), words, fill=color, font=font)
+        draw.text((0, y_offset), words, fill=color)
         y_offset += text_height
 
     # Blur and save
