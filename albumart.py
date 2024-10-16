@@ -96,8 +96,11 @@ if usecode:
 
     link = st.text_input('Playlist link')
     blur_radius = 4
-    background_color = hsv_to_rgb(random.randint(0, 360), random.randint(40, 80), random.randint(40, 80))
-
+    if not st.session_state.background_color:
+        background_color = hsv_to_rgb(random.randint(0, 360), random.randint(40, 80), random.randint(40, 80))
+   else:
+        background_color = st.session_state.background_color
+        
     if link:
         playlist_id = link
         playlist = sp.playlist(playlist_id)
