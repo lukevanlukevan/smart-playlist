@@ -78,8 +78,8 @@ usecode = st.session_state['code']
 
 
 if usecode:
-    token_info = sp_oauth.get_access_token(usecode)
-    sp = spotipy.Spotify(auth=token_info['access_token'])
+    spot_token = sp_oauth.get_access_token(usecode, as_dict=False)
+    sp = spotipy.Spotify(auth=spot_token)
 
     st.title("Playlist Cover Generator")
 
