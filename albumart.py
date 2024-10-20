@@ -99,7 +99,6 @@ if usecode:
     st.write("or")
 
     pl_count = sp.current_user_playlists(limit=1)['total']
-    st.write(f"Total playlists: {pl_count}")
     playlists = []
     i = 0
     while len(playlists) < pl_count:
